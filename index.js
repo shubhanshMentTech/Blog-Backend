@@ -27,12 +27,16 @@ app.use(cors({
 
 
 //Importing the auth routes module
-const auth = require("./ROUTES/auth");
-const blog = require("./ROUTES/blog");
+// const auth = require("./ROUTES/auth");
+// const blog = require("./ROUTES/blog");
 
-//using the auth route 
-app.use("/api/auth", auth)
-app.use("/api/blog", blog)
+// //using the auth route 
+// app.use("/api/auth", auth)
+// app.use("/api/blog", blog)
+
+const routes = require('./ROUTES')
+
+app.use(routes);
 
 
 app.listen(port, () => {

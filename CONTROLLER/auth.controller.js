@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken')
 //Importing the bcrypt package
 const bcrypt = require('bcryptjs')
 //Imprtong the user model 
-const userModel = require('../MODEL/user')
+const userModel = require('../MODEL/user.model')
 //Importing the express-async-handler package
 const asyncHandler = require("express-async-handler");
 //Importing the uuidv4 package to generate userId
@@ -107,7 +107,7 @@ const login = asyncHandler(async (req, res) => {
                     //Signign the token with the JWT_SECRET in the .env
                     process.env.JWT_SECRET,
                     {
-                        expiresIn: "1h"
+                        expiresIn: "1d"
                     }
                 )
                 return res.status(200).json({

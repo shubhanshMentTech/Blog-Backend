@@ -1,11 +1,12 @@
-const Blog = require("../MODEL/blog")
-const User = require("../MODEL/user")
+const Blog = require("../MODEL/blog.model")
+const User = require("../MODEL/user.model")
 
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, userId } = req.body
+    const { title, content } = req.body
+    const user = req.user;
 
-    if (!title || !content || !userId) {
+    if (!title || !content ) {
       return res.status(400).json({ message: "Missing required fields" })
     }
 
@@ -18,11 +19,11 @@ exports.createBlog = async (req, res) => {
     const newBlog = await Blog.create({
       title,
       content,
-      owners: [userId],
+      owners: [user._id],
     })
 
     // Push blog to user's blogs array
-    await User.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(user._id, {
       $push: { blogs: newBlog._id },
     })
 
@@ -59,7 +60,7 @@ exports.getBlogs = async (req, res) => {
 }
 
 
-exports.get_a_blog = async(req,res) => {
+exports.getSingleBlog = async(req,res) => {
 
   
   try {
@@ -76,7 +77,7 @@ exports.get_a_blog = async(req,res) => {
     }
 }
 
-exports.get_my_blogs = async (req, res) => {
+exports.getMyBlogs = async (req, res) => {
     try {
 
       const { id } = req.body
