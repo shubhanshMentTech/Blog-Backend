@@ -31,7 +31,12 @@ const userSchema = new mongoose.Schema(
       type: String, // URL or file name of profile image
       default: "",
     },
-
+    role: {
+      type: String,
+      enum: ["admin", "editor", "user"],
+      default: "user",
+    },
+    
     blogs: [
       {
         type: mongoose.Schema.Types.ObjectId,

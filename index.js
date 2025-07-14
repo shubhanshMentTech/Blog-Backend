@@ -5,11 +5,12 @@ const port = 3000;
 
 
 // to parse JSON bodies
-app.use(express.json());
-
+// app.use(express.json());
 // parse URL-encoded form data (e.g., from HTML forms)
-app.use(express.urlencoded({ extended: true }));
+// app.use(express.urlencoded({ extended: true }));
 
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 
 // connection to mongodb

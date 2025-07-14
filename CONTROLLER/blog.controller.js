@@ -2,36 +2,60 @@ const blogModel = require("../MODEL/blog.model");
 const Blog = require("../MODEL/blog.model");
 const BlogUser = require("../MODEL/blogUser.model");
 const User = require("../MODEL/user.model")
+const cloudinary = require("../UTILS/cloudinary"); // adjust path as needed
 
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content } = req.body
+    const { title, content } = req.body;
     const user = req.user;
 
-    if (!title || !content ) {
-      return res.status(400).json({ message: "Missing required fields" })
+    if (!title || !content) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    let updatedContent = content;
+
+    // Match all <img src="data:image/..."> tags
+    const imgRegex = /<img[^>]+src="data:image\/[^;]+;base64[^">]+"[^>]*>/g;
+    const matches = content.match(imgRegex) || [];
+
+    for (let imgTag of matches) {
+      const base64Match = imgTag.match(/src="(data:image\/[^;]+;base64[^"]+)"/);
+
+      if (base64Match) {
+        const base64Data = base64Match[1];
+
+        // Upload to Cloudinary
+        const uploadResult = await cloudinary.uploader.upload(base64Data, {
+          folder: "blogs",
+        });
+
+        // Replace base64 image src with Cloudinary URL
+        const cloudImgTag = imgTag.replace(base64Data, uploadResult.secure_url);
+        updatedContent = updatedContent.replace(imgTag, cloudImgTag);
+      }
     }
 
     const newBlog = await Blog.create({
       title,
-      content,
-    })
+      content: updatedContent,
+    });
 
-    // Push blog and user to Blog_User schema
-    const newBlogUser = await BlogUser.create({
-      newBlog,
-      user
-    })
+    await BlogUser.create({
+      blog: newBlog._id,
+      user: user._id,
+    });
 
     res.status(201).json({
       message: "Blog created successfully",
       blog: newBlog,
-    })
+    });
   } catch (error) {
-    console.error("Blog creation error:", error)
-    res.status(500).json({ message: "Server error", error: error.message })
+    console.error("Blog creation error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-}
+};
+
 
 
 exports.getBlogs = async (req, res) => {
@@ -75,25 +99,40 @@ exports.getSingleBlog = async(req,res) => {
 
 exports.getMyBlogs = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.userId || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: No user ID in request" });
+    }
 
     // 1. Fetch blogs from BlogUser model
-    const blogUserEntries = await BlogUser.find({ users: userId }).populate("blogs");
+    const blogUserEntries = await BlogUser.find({ user: userId }).populate("blog");
 
-    const blogsFromBlogUser = blogUserEntries.flatMap(entry => entry.blog);
+    // Extract and filter valid blog references
+    const blogsFromBlogUser = blogUserEntries
+      .map(entry => entry.blog)
+      .filter(blog => blog && blog._id);
 
-    // 2. Fetch user's blogs from old User model
+      console.log("blogsFromBlogUser", blogsFromBlogUser);
+
+    // 2. Fetch user's blogs from User model
     const user = await User.findById(userId).populate("blogs");
-    const blogsFromUser = user.blogs || [];
 
-    // 3. Merge both lists and remove duplicates
-    const mergedBlogs = [
-      ...blogsFromBlogUser.filter(blog => !blogsFromUser.some(b => b._id.equals(blog._id))),
-      ...blogsFromUser
-    ];
+    const blogsFromUser = Array.isArray(user?.blogs)
+      ? user.blogs.filter(blog => blog && blog._id)
+      : [];
 
-    // 4. Convert to array and sort by createdAt descending
-    const sortedBlogs = Array.from(mergedBlogs.values()).sort(
+    // 3. Use Map to merge and remove duplicates by _id
+    const blogMap = new Map();
+
+    [...blogsFromBlogUser, ...blogsFromUser].forEach(blog => {
+      blogMap.set(blog._id.toString(), blog);
+    });
+
+    const mergedBlogs = Array.from(blogMap.values());
+
+    // 4. Sort by createdAt descending
+    const sortedBlogs = mergedBlogs.sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
 
@@ -104,6 +143,7 @@ exports.getMyBlogs = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 exports.getMyBlogsFromBlogUser = async (req, res) => {

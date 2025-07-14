@@ -3,8 +3,7 @@ const Joi = require("joi");
 
 const createBlogValidator = Joi.object({
   title: Joi.string().min(3).required(),
-  content: Joi.string().required(),
-  userId: Joi.string().length(24).required(), // MongoDB ObjectId
+  content: Joi.string().required(),// MongoDB ObjectId
 });
 
 const addParticipantValidator = Joi.object({

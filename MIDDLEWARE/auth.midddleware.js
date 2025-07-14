@@ -2,7 +2,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../MODEL/user.model"); // adjust path as needed
 
-const verifyToken = async (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
     // 1. Get token from headers
     const authHeader = req.headers.authorization;
@@ -25,6 +25,10 @@ const verifyToken = async (req, res, next) => {
 
     // 4. Attach user to request
     req.user = user;
+    
+    req.userId= decoded.userId
+    req.userEmail= decoded.email
+    req.userRole= decoded.role
     next();
 
   } catch (err) {
@@ -33,4 +37,6 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-module.exports = verifyToken;
+module.exports = auth;
+
+

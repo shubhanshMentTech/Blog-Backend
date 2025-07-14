@@ -18,7 +18,7 @@ const {v4 : uuidv4} = require('uuid')
 const register = asyncHandler(async (req, res) => {
 
     //Destructuing the inputs from req.body 
-    const { fullName, email, password, phoneNumber } = req.body;
+    const { fullName, email, password, phoneNumber, role } = req.body;
 
     //Verifying the email address inputed is not used already 
     const verifyEmail = await userModel.findOne({ email: email })
@@ -31,32 +31,45 @@ const register = asyncHandler(async (req, res) => {
             //generating userId
             const userId = uuidv4()
             //using bcrypt to hash the password sent from the user
-            bcrypt.hash(req.body.password, 10)
-                .then((hash) => {
-                    //Registering the user
-                    const user = new userModel({
-                        userId: userId,
-                        fullName: fullName,
-                        email: email,
-                        password: hash,
-                        phoneNumber: phoneNumber
-                    });
+            bcrypt.hash(req.body.password, 10).then((hash) => {
+                //Registering the user
+                const user = new userModel({
+                    userId: userId,
+                    fullName: fullName,
+                    email: email,
+                    password: hash,
+                    phoneNumber: phoneNumber
+                });
 
-                    //saving the data to the mongodb user collection
-                    user.save()
-                        .then((response) => {
-                            return res.status(201).json({
-                                message: 'user successfully created!',
-                                result: response,
-                                success: true
-                            })
-                        })
-                        .catch((error) => {
-                            res.status(500).json({
-                                error: error,
-                            })
-                        })
+                let jwtToken = jwt.sign(
+                    {
+                        email:email,
+                        userId: user._id,
+                        role: role,
+                    },
+                    //Signign the token with the JWT_SECRET in the .env
+                    process.env.JWT_SECRET,
+                    {
+                        expiresIn: "1d"
+                    }
+                )
+
+                //saving the data to the mongodb user collection
+                user.save().then((response) => {
+                    return res.status(201).json({
+                        message: 'user successfully created!',
+                        result: response,
+                        accessToken: jwtToken,
+                        userId: user._id,
+                        success: true
+                    })
                 })
+                .catch((error) => {
+                    res.status(500).json({
+                        error: error,
+                    })
+                })
+            })
         }
     } catch (error) {
         return res.status(412).send({
@@ -102,7 +115,8 @@ const login = asyncHandler(async (req, res) => {
                 let jwtToken = jwt.sign(
                     {
                         email: getUser.email,
-                        userId: getUser.userId
+                        userId: getUser.userId,
+                        role: getUser.role
                     },
                     //Signign the token with the JWT_SECRET in the .env
                     process.env.JWT_SECRET,
